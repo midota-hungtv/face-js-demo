@@ -24,6 +24,7 @@ async function loadTrainingData() {
 let faceMatcher
 
 async function init() {
+  document.querySelector('.loader-wrapper').style.display = 'block';
   await Promise.all([
     faceapi.nets.ssdMobilenetv1.loadFromUri('./models'),
     faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
@@ -32,7 +33,7 @@ async function init() {
 
   const trainingData = await loadTrainingData()
   faceMatcher = new faceapi.FaceMatcher(trainingData, 0.6)
-
+  document.querySelector('.loader-wrapper').style.display = 'none';
   Toastify({
     text: 'Tải xong model nhận diện!'
   }).showToast();
@@ -41,6 +42,7 @@ async function init() {
 init();
 
 fileInput.addEventListener('change', async (e) => {
+  document.querySelector('.loader-wrapper').style.display = 'block';
   const file = fileInput.files[0];
 
   const image = await faceapi.bufferToImage(file);
@@ -66,5 +68,5 @@ fileInput.addEventListener('change', async (e) => {
     })
     drawBox.draw(canvas)
   }
-
+  document.querySelector('.loader-wrapper').style.display = 'none';
 });

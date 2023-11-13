@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,16 +22,369 @@
       top: 0;
       left: 0;
     }
+
+    /* Styles for the loading spinner */
+    .loader-wrapper {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.4);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .loader {
+      position: absolute;
+      top: 48%;
+      left: 48%;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #3498db;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 2s linear infinite;
+    }
+
+    /* Animation for the loading spinner */
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .main-section {
+      height: calc(100vh - 326px);
+      max-width: 650px;
+      width: 100%;
+    }
+
+    .camera-wrapper {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .camera-element {
+      max-width: 100%;
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+    }
+
+    .detect-area {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
   </style>
 </head>
+
 <body>
   <h1>Nhận diện IDOL FACE</h1>
   <input type="file" id="file-input" />
   <div id="container"></div>
+  <div class="loader-wrapper">
+    <div class="loader"></div>
+  </div>
+  <div class="main-section">
+    <div class="camera-wrapper d-flex align-items-center justify-content-center">
+      <div class="d-flex position-relative w-100">
+        <video class="camera-element position-relative" autoPlay playsInline muted></video>
+        <canvas class="detect-area" ref="canvasRef"></canvas>
+      </div>
+    </div>
+  </div>
 </body>
 <script src="
 https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js
 "></script>
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 <script src="script.js"></script>
+
 </html>
+
+<!-- Vue demo -->
+<!-- <template>
+  <div class="main-section">
+    <div class="camera-wrapper d-flex align-items-center justify-content-center">
+      <div v-show="!originalImage">
+        <div class="d-flex position-relative w-100">
+          <video class="camera-element position-relative" autoPlay playsInline muted ref="videoRef" />
+          <canvas class="detect-area" ref="canvasRef" />
+        </div>
+      </div>
+      <img v-if="originalImage" :src="originalImage" />
+    </div>
+  </div>
+</template>
+<script>
+import { mapMutations } from 'vuex';
+import CustomVisionApi from '../../../apis/custom_vision';
+
+export default {
+  data() {
+    return {
+      model: null,
+      originalImage: null,
+      predictions: [],
+      animationFixedFrame: false,
+      previousTimestamp: 0,
+      isStopCamera: false
+    };
+  },
+  mounted() {
+    this.openCamera();
+  },
+  beforeDestroy() {
+    this.closeCamera();
+  },
+  methods: {
+    ...mapMutations(['hideLoading']),
+    openCamera() {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const webCamPromise = navigator.mediaDevices
+          .getUserMedia({
+            audio: false,
+            video: {
+              facingMode: 'environment'
+            }
+          })
+          .then((stream) => {
+            window.stream = stream;
+            this.$refs.videoRef.srcObject = stream;
+            return new Promise((resolve) => {
+              this.$refs.videoRef.onloadedmetadata = () => {
+                resolve();
+              };
+            });
+          });
+        Promise.all([webCamPromise])
+          .then(() => {
+            this.loadFrame();
+          })
+          .catch((error) => {
+            this.hideLoading();
+            console.log('error', error);
+            bootbox.alert({
+              message: 'エラーが発生しました。',
+              closeButton: false
+            });
+          });
+      }
+    },
+    closeCamera() {
+      if (window.stream) {
+        this.isStopCamera = true;
+        window.stream.getTracks().forEach(function (track) {
+          track.stop();
+        });
+      }
+    },
+    loadFrame() {
+      requestAnimationFrame((timestamp) => {
+        if (!this.isStopCamera) {
+          this.drawFixedFrame(timestamp);
+          this.loadFrame();
+        }
+      });
+    },
+    drawFixedFrame(timestamp) {
+      const aSecond = 1000;
+      if (timestamp - this.previousTimestamp < aSecond) return;
+      this.previousTimestamp = timestamp;
+      const ctx = this.$refs.canvasRef.getContext('2d');
+      ctx.canvas.width = ctx.canvas.clientWidth;
+      ctx.canvas.height = ctx.canvas.clientHeight;
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      ctx.beginPath();
+      ctx.strokeStyle = this.animationFixedFrame ? '#090850' : '#FFFFFF';
+      ctx.lineWidth = 2;
+      const centerX = ctx.canvas.width / 2;
+      const centerY = ctx.canvas.height / 2;
+      const rectangleWidth = 260;
+      const rectangleHeight = 140;
+      const topLeft = {
+        x: centerX - rectangleWidth / 2,
+        y: centerY - rectangleHeight / 2,
+        yPosition: 'top',
+        xPosition: 'left'
+      };
+      const topRight = {
+        x: centerX + rectangleWidth / 2,
+        y: centerY - rectangleHeight / 2,
+        yPosition: 'top',
+        xPosition: 'right'
+      };
+      const bottomLeft = {
+        x: centerX - rectangleWidth / 2,
+        y: centerY + rectangleHeight / 2,
+        yPosition: 'bottom',
+        xPosition: 'left'
+      };
+      const bottomRight = {
+        x: centerX + rectangleWidth / 2,
+        y: centerY + rectangleHeight / 2,
+        yPosition: 'bottom',
+        xPosition: 'right'
+      };
+      [topLeft, topRight, bottomLeft, bottomRight].forEach((corner) => {
+        drawCorner(corner);
+      });
+      ctx.stroke();
+      function drawCorner(corner) {
+        ctx.moveTo(corner.x, corner.y);
+        if (corner.xPosition == 'left') {
+          ctx.lineTo(corner.x + 15, corner.y);
+        } else {
+          ctx.lineTo(corner.x - 15, corner.y);
+        }
+        ctx.moveTo(corner.x, corner.y);
+        if (corner.yPosition == 'top') {
+          ctx.lineTo(corner.x, corner.y + 15);
+        } else {
+          ctx.lineTo(corner.x, corner.y - 15);
+        }
+      }
+      this.animationFixedFrame = !this.animationFixedFrame;
+      ctx.closePath();
+    },
+    async getDetectedImageDimension() {
+      if (!this.originalImage) return { width: 0, height: 0 };
+      const originalImage = await this.getLoadedImage(this.originalImage);
+      return {
+        width: originalImage.width,
+        height: originalImage.height
+      };
+    },
+    async getFinalObjectDetection() {
+      if (!this.predictions?.length) return;
+      const imageDimension = await this.getDetectedImageDimension();
+      const tagName = this.predictions[0].tagName;
+      const point = Math.round(parseFloat(this.predictions[0].probability) * 100);
+      const x = this.predictions[0].boundingBox.left * imageDimension.width;
+      const y = this.predictions[0].boundingBox.top * imageDimension.height;
+      const width = this.predictions[0].boundingBox.width * imageDimension.width;
+      const height = this.predictions[0].boundingBox.height * imageDimension.height;
+      return {
+        x,
+        y,
+        width,
+        height,
+        tagName,
+        point
+      };
+    },
+    async loadCutImage() {
+      const finalObjectDetection = await this.getFinalObjectDetection();
+      if (finalObjectDetection) {
+        const minimunPercenAccurancy = 50;
+        if (finalObjectDetection.point < minimunPercenAccurancy) {
+          this.originalImage = null;
+          this.hideLoading();
+          bootbox.alert('数字が認識できませんでした。再撮影しますか。');
+          return;
+        }
+        const { x, y, width, height } = finalObjectDetection;
+        await this.cutImageByCoordinates(this.originalImage, x, y, width, height);
+      }
+    },
+    detectFrame() {
+      const video = this.$refs.videoRef;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.clientWidth;
+      canvas.height = video.clientHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          this.originalImage = URL.createObjectURL(blob);
+          this.predictions = [];
+          this.detectWithAruze(blob).then((predictions) => {
+            this.predictions = predictions;
+            this.loadCutImage();
+          });
+        }
+      });
+    },
+    async detectWithAruze(file) {
+      try {
+        let formData = new FormData();
+        formData.append('file', file);
+        const { data } = await CustomVisionApi.postCustomVision(formData, {
+          'Content-Type': 'multipart/form-data'
+        });
+        return data?.custom_vision?.predictions || [];
+      } catch (error) {
+        this.hideLoading();
+        console.log('error', error);
+        bootbox.alert({
+          message: 'エラーが発生しました。',
+          closeButton: false
+        });
+      }
+    },
+    async cutImageByCoordinates(imageSrc, x, y, width, height) {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      const image = await this.getLoadedImage(imageSrc);
+      ctx.drawImage(image, x, y, width, height, 0, 0, width, height);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          this.$emit('getDetectImage', blob);
+        }
+      });
+    },
+    async getLoadedImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          resolve(img);
+        };
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+  }
+};
+</script>
+<style lang="scss" scoped>
+.main-section {
+  height: calc(100vh - 326px);
+  max-width: 650px;
+  width: 100%;
+  .camera-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    .camera-element {
+      max-width: 100%;
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+    }
+    .detect-area {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+  }
+}
+</style> -->
